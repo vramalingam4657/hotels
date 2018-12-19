@@ -16,6 +16,11 @@ import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Produces;
@@ -30,7 +35,7 @@ public class HotelsController {
     @GET
     @Produces("text/json")
     @RequestMapping("/hotels")
-    public ArrayList<HotelsData> getHotels(
+    public HotelsDataResponse getHotels(
             @RequestParam(name = "airport", defaultValue = "YVR") String airport,
             @RequestParam(name = "date", defaultValue = "06/02/2019") String date
             ) {
@@ -50,10 +55,10 @@ public class HotelsController {
             e.printStackTrace();
             return null;
         }
-        ArrayList<HotelsData> testData = new ArrayList<HotelsData>();
 
+        ArrayList<HotelsData> hotels = new ArrayList<HotelsData>();
         for (HotelOffer ho: offers) {
-            testData.add(new HotelsData(
+            hotels.add(new HotelsData(
                     ho.getHotel().getName(),
                     ho.getHotel().getAddress(),
                     ho.getHotel().getContact().getPhone(),
@@ -61,7 +66,20 @@ public class HotelsController {
                     ));
         }
 
-        return testData;
+        List<HotelsData> sortedHotels = (List<HotelsData>)
+                (hotels.stream()
+                .sorted(Comparator.comparingDouble(HotelsData::getRate))
+                .collect(Collectors.toList()));
+        int numHotels = sortedHotels.size();
+        if (numHotels > 3) {
+            // truncate to max 3 elements, removing elements from the end
+            for (int i=numHotels-1; i>2; i--) {
+                sortedHotels.remove(i);
+            }
+        }
+
+        HotelsDataResponse response = new HotelsDataResponse(sortedHotels);
+        return response;
     }
 
     @GET
